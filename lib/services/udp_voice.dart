@@ -46,18 +46,36 @@ class UdpVoice {
   final _rng = Random.secure();
 
   String? _selfUserId;
+  InternetAddress _broadcast = InternetAddress('255.255.255.255');
 
   Stream<IncomingVoice> get incoming => _incoming.stream;
   bool get isBound => _socket != null;
+  String get broadcastAddress => _broadcast.address;
+
+  /// Açyk broadcast salgysy — meselem '192.168.1.255'. Boş goýlan bolsa
+  /// '255.255.255.255' ulanylýar.
+  void setBroadcastAddress(String? address) {
+    if (address == null || address.isEmpty) {
+      _broadcast = InternetAddress('255.255.255.255');
+      return;
+    }
+    try {
+      _broadcast = InternetAddress(address);
+    } catch (_) {
+      _broadcast = InternetAddress('255.255.255.255');
+    }
+  }
 
   Future<void> start({
     required int port,
     required ChannelCodec codec,
     required String selfUserId,
+    String? broadcastAddress,
   }) async {
     await stop();
     _codec = codec;
     _selfUserId = selfUserId;
+    setBroadcastAddress(broadcastAddress);
 
     final s = await RawDatagramSocket.bind(
       InternetAddress.anyIPv4,
@@ -218,7 +236,7 @@ class UdpVoice {
       pkt.setRange(8, 20, nonce);
       pkt.setRange(20, pkt.length, cipher);
 
-      s.send(pkt, InternetAddress('255.255.255.255'), port);
+      s.send(pkt, _broadcast, port);
 
       offset += chunkLen;
       if (sendAtLeastOnce) break;
@@ -275,7 +293,7 @@ class UdpVoice {
     pkt.setRange(8, 20, nonce);
     pkt.setRange(20, pkt.length, cipher);
 
-    s.send(pkt, InternetAddress('255.255.255.255'), port);
+    s.send(pkt, _broadcast, port);
   }
 
   Future<void> dispose() async {

@@ -38,8 +38,20 @@ class _Peer {
   });
 }
 
-const _presenceInterval = Duration(seconds: 3);
-const _presenceTimeout = Duration(seconds: 10);
+const _presenceInterval = Duration(seconds: 2);
+const _presenceTimeout = Duration(seconds: 12);
+
+String? _subnetBroadcast(String? ip, String? mask) {
+  if (ip == null || mask == null) return null;
+  try {
+    final ipp = ip.split('.').map(int.parse).toList();
+    final mp = mask.split('.').map(int.parse).toList();
+    if (ipp.length != 4 || mp.length != 4) return null;
+    return List.generate(4, (i) => (ipp[i] | (~mp[i] & 0xFF)) & 0xFF).join('.');
+  } catch (_) {
+    return null;
+  }
+}
 
 class _PttScreenState extends State<PttScreen> with WidgetsBindingObserver {
   final _udp = UdpVoice();
@@ -92,16 +104,22 @@ class _PttScreenState extends State<PttScreen> with WidgetsBindingObserver {
       }
       await _player.init();
       final codec = await ChannelCodec.fromChannel(widget.settings.channel);
+
+      String? bcast;
+      try {
+        final info = NetworkInfo();
+        _ownIp = await info.getWifiIP();
+        final mask = await info.getWifiSubmask();
+        bcast = _subnetBroadcast(_ownIp, mask);
+      } catch (_) {}
+
       await _udp.start(
         port: widget.settings.port,
         codec: codec,
         selfUserId: widget.settings.userId,
+        broadcastAddress: bcast,
       );
       _inSub = _udp.incoming.listen(_onIncoming);
-      try {
-        final info = NetworkInfo();
-        _ownIp = await info.getWifiIP();
-      } catch (_) {}
 
       // Ilkinji presence dessine ugradylýar, soň wagtlaýyn gaýtalanýar.
       _sendPresence();
@@ -162,6 +180,10 @@ class _PttScreenState extends State<PttScreen> with WidgetsBindingObserver {
       ..name = v.senderName
       ..avatarIdx = v.avatarIdx
       ..lastSeen = DateTime.now();
+
+    // Täze peer peýda bolsa, derrew öz presence-imizi iberýäris — şonda
+    // ol hem bizi 10+ sekunt garaşmazdan görýär.
+    if (!existed) _sendPresence();
 
     if (v.isPresence) {
       if (!existed && mounted) setState(() {});
@@ -368,12 +390,11 @@ class _PttScreenState extends State<PttScreen> with WidgetsBindingObserver {
                       onlineCount: _online.length + 1,
                     ),
                     const SizedBox(height: 20),
-                    GestureDetector(
-                      onTapDown: (_) => _startTx(),
-                      onTapUp: (_) => _stopTx(),
-                      onTapCancel: _stopTx,
-                      onLongPressStart: (_) => _startTx(),
-                      onLongPressEnd: (_) => _stopTx(),
+                    Listener(
+                      behavior: HitTestBehavior.opaque,
+                      onPointerDown: (_) => _startTx(),
+                      onPointerUp: (_) => _stopTx(),
+                      onPointerCancel: (_) => _stopTx(),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 120),
                         width: btnSize,
