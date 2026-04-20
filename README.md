@@ -4,6 +4,32 @@
 Telefonlar şol bir ýerli ulgamda şifrelenen kanal arkaly bas-konuş ses iberýär.
 
 > iOS & Android · Flutter · AES-256-GCM · UDP broadcast
+> **Häzirki wersiýa: [v0.1.0](https://github.com/jumabayev/BBTalk/releases/tag/v0.1.0)**
+
+## Android APK-ny ýüklemek
+
+<table>
+  <tr>
+    <td align="center" width="220">
+      <a href="https://github.com/jumabayev/BBTalk/releases/download/v0.1.0/bbtalk-v0.1.0.apk">
+        <img src="qr-v0.1.0.png" width="200" alt="QR: BBTalk v0.1.0 APK-ny ýükle">
+      </a>
+      <br>
+      <sub>Telefon kamerasy bilen okadyň</sub>
+    </td>
+    <td>
+      <p><b>📥 Göni ýükleme salgysy:</b></p>
+      <p><a href="https://github.com/jumabayev/BBTalk/releases/download/v0.1.0/bbtalk-v0.1.0.apk">bbtalk-v0.1.0.apk</a> (46 MB)</p>
+      <p><b>🗂 Ähli wersiýalar:</b></p>
+      <p><a href="https://github.com/jumabayev/BBTalk/releases">github.com/jumabayev/BBTalk/releases</a></p>
+      <ol>
+        <li>APK-ny ýükläp alyň</li>
+        <li>Telefonda <i>"Näbelli çeşmelerden gurmak"</i> rugsadyny beriň</li>
+        <li>APK-a basyp guruň — mikrofon rugsadyny beriň</li>
+      </ol>
+    </td>
+  </tr>
+</table>
 
 ## Aýratynlyklar
 
