@@ -7,13 +7,14 @@ import 'dart:typed_data';
 import '../audio_constants.dart';
 import 'channel_codec.dart';
 
-/// Başga bir cihazdan gelen ses paketi.
+/// Başga bir cihazdan gelen paket — ses ýa-da presence heartbeat.
 class IncomingVoice {
   final String senderId;
   final String senderName;
   final int avatarIdx;
   final Uint8List pcm;
   final bool endOfTransmission;
+  final bool isPresence;
 
   IncomingVoice({
     required this.senderId,
@@ -21,7 +22,14 @@ class IncomingVoice {
     required this.avatarIdx,
     required this.pcm,
     required this.endOfTransmission,
+    required this.isPresence,
   });
+}
+
+/// Paket başlyk flaglary.
+class _PktFlags {
+  static const int endOfTransmission = 0x01;
+  static const int presence = 0x02;
 }
 
 /// UDP ýaýlym + AES-GCM şifrelemeli bas-konuş transporty.
@@ -132,7 +140,8 @@ class UdpVoice {
       senderName: name,
       avatarIdx: avatarIdx,
       pcm: pcm,
-      endOfTransmission: (flags & 0x01) != 0,
+      endOfTransmission: (flags & _PktFlags.endOfTransmission) != 0,
+      isPresence: (flags & _PktFlags.presence) != 0,
     ));
   }
 
@@ -164,7 +173,8 @@ class UdpVoice {
     do {
       final chunkLen = (total - offset).clamp(0, maxPayload);
       final isLast = offset + chunkLen >= total;
-      final flags = (endOfTransmission && isLast) ? 0x01 : 0x00;
+      final flags =
+          (endOfTransmission && isLast) ? _PktFlags.endOfTransmission : 0;
       final seq = (_txSeq++) & 0xFFFF;
 
       final plaintext = Uint8List(
@@ -213,6 +223,59 @@ class UdpVoice {
       offset += chunkLen;
       if (sendAtLeastOnce) break;
     } while (offset < total);
+  }
+
+  /// Kanalda "men bardan" diýip bir paket iberýär (ses ýok, diňe kimligim).
+  Future<void> sendPresence({
+    required int port,
+    required String userId,
+    required String name,
+    required int avatarIdx,
+  }) async {
+    final s = _socket;
+    final codec = _codec;
+    if (s == null || codec == null) return;
+
+    final userIdBytes = _hexToBytes(userId);
+    if (userIdBytes.length != 16) return;
+
+    final safeName = name.length > 63 ? name.substring(0, 63) : name;
+    final nameBytes = utf8.encode(safeName);
+    if (nameBytes.length > 255) return;
+
+    final plaintext = Uint8List(16 + 1 + nameBytes.length + 1);
+    plaintext.setRange(0, 16, userIdBytes);
+    plaintext[16] = nameBytes.length;
+    plaintext.setRange(17, 17 + nameBytes.length, nameBytes);
+    plaintext[17 + nameBytes.length] = avatarIdx & 0xFF;
+
+    final nonce = Uint8List.fromList(
+      List<int>.generate(12, (_) => _rng.nextInt(256)),
+    );
+
+    final seq = (_txSeq++) & 0xFFFF;
+    final header = Uint8List(8);
+    header[0] = AudioConstants.magic[0];
+    header[1] = AudioConstants.magic[1];
+    header[2] = AudioConstants.magic[2];
+    header[3] = AudioConstants.magic[3];
+    header[4] = 2;
+    header[5] = _PktFlags.presence;
+    header[6] = seq & 0xFF;
+    header[7] = (seq >> 8) & 0xFF;
+
+    final cipher = await codec.encrypt(
+      plaintext: plaintext,
+      aad: header,
+      nonce: nonce,
+    );
+
+    final pkt = Uint8List(8 + 12 + cipher.length);
+    pkt.setRange(0, 8, header);
+    pkt.setRange(8, 20, nonce);
+    pkt.setRange(20, pkt.length, cipher);
+
+    s.send(pkt, InternetAddress('255.255.255.255'), port);
   }
 
   Future<void> dispose() async {
