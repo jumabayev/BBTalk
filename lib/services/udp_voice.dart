@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -15,6 +16,7 @@ class IncomingVoice {
   final Uint8List pcm;
   final bool endOfTransmission;
   final bool isPresence;
+  final int seq; // 16-bit paket tertibi — nobatda ulanylýar
 
   IncomingVoice({
     required this.senderId,
@@ -23,6 +25,7 @@ class IncomingVoice {
     required this.pcm,
     required this.endOfTransmission,
     required this.isPresence,
+    required this.seq,
   });
 }
 
@@ -30,6 +33,77 @@ class IncomingVoice {
 class _PktFlags {
   static const int endOfTransmission = 0x01;
   static const int presence = 0x02;
+}
+
+/// Bir ugradyjy üçin jitter-buffer.
+///
+/// • Öňki gelip ýeten seq-den kiçi ýa deň paket = duplikat / gijik → ret edilýär.
+/// • Paketleri `seq` boýunça tertibläp yzygiderli berýär.
+/// • Boşluk emele gelse (mysal paket ýitse), iň köp 60 ms garaşyp soň
+///   buferdäki iň ýakyn pakedi "indiki" diýip kabul edýär → ses doly ýit-
+///   meýär, diňe birjik dyknyk bolýar.
+class _SenderBuffer {
+  int? _last; // soňky çykarylan seq (boş bolsa null)
+  final SplayTreeMap<int, IncomingVoice> _pending = SplayTreeMap();
+  Timer? _gapTimer;
+  DateTime lastActivity = DateTime.now();
+  final void Function(IncomingVoice) _emit;
+
+  static const _gapWait = Duration(milliseconds: 60);
+
+  _SenderBuffer(this._emit);
+
+  void add(IncomingVoice v) {
+    lastActivity = DateTime.now();
+    final seq = v.seq;
+    if (_last != null) {
+      final diff = (seq - _last!) & 0xFFFF;
+      if (diff == 0 || diff > 32768) return; // duplikat ýa gijik
+    }
+    if (_pending.containsKey(seq)) return;
+    _pending[seq] = v;
+
+    _drain();
+
+    if (_pending.isNotEmpty) {
+      _gapTimer?.cancel();
+      _gapTimer = Timer(_gapWait, _jumpGap);
+    }
+
+    if (v.endOfTransmission) {
+      // Ahyr belgisi gelende galanyny derrew boşadyň we ýagdaýy arassala.
+      _gapTimer?.cancel();
+      _pending.forEach((_, p) => _emit(p));
+      _pending.clear();
+      _last = null;
+    }
+  }
+
+  void _drain() {
+    while (_pending.isNotEmpty) {
+      final nextKey = _pending.firstKey()!;
+      final isNext = _last == null || ((nextKey - _last!) & 0xFFFF) == 1;
+      if (!isNext) break;
+      _last = nextKey;
+      _emit(_pending.remove(nextKey)!);
+    }
+  }
+
+  void _jumpGap() {
+    if (_pending.isEmpty) return;
+    final first = _pending.firstKey()!;
+    _last = first;
+    _emit(_pending.remove(first)!);
+    _drain();
+    if (_pending.isNotEmpty) {
+      _gapTimer = Timer(_gapWait, _jumpGap);
+    }
+  }
+
+  void dispose() {
+    _gapTimer?.cancel();
+    _pending.clear();
+  }
 }
 
 /// UDP ýaýlym + AES-GCM şifrelemeli bas-konuş transporty.
@@ -47,6 +121,10 @@ class UdpVoice {
 
   String? _selfUserId;
   InternetAddress _broadcast = InternetAddress('255.255.255.255');
+
+  // Ugradyjy boýunça jitter buferler.
+  final Map<String, _SenderBuffer> _buffers = {};
+  Timer? _janitorTimer;
 
   Stream<IncomingVoice> get incoming => _incoming.stream;
   bool get isBound => _socket != null;
@@ -87,6 +165,19 @@ class UdpVoice {
     s.readEventsEnabled = true;
     _socket = s;
     s.listen(_onEvent, onError: (_) {}, cancelOnError: false);
+
+    // Her 2 sekuntda boş ugradyjy buferleri arassala.
+    _janitorTimer?.cancel();
+    _janitorTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      final cutoff = DateTime.now().subtract(const Duration(seconds: 2));
+      _buffers.removeWhere((_, b) {
+        if (b.lastActivity.isBefore(cutoff)) {
+          b.dispose();
+          return true;
+        }
+        return false;
+      });
+    });
   }
 
   bool _canReusePort() {
@@ -101,6 +192,12 @@ class UdpVoice {
     final s = _socket;
     _socket = null;
     s?.close();
+    _janitorTimer?.cancel();
+    _janitorTimer = null;
+    for (final b in _buffers.values) {
+      b.dispose();
+    }
+    _buffers.clear();
   }
 
   Future<void> setCodec(ChannelCodec codec) async {
@@ -129,6 +226,7 @@ class UdpVoice {
     }
     if (data[4] != 2) return; // version
     final flags = data[5];
+    final seq = data[6] | (data[7] << 8);
     final header = data.sublist(0, 8);
     final nonce = data.sublist(8, 20);
     final cipher = data.sublist(20);
@@ -154,14 +252,29 @@ class UdpVoice {
     // .sublist çärýek Uint8List-i owrdip berýär — ikinji copy gerek däl.
     final pcm = pt.sublist(18 + nameLen);
 
-    _incoming.add(IncomingVoice(
+    final isPresence = (flags & _PktFlags.presence) != 0;
+    final pkt = IncomingVoice(
       senderId: senderId,
       senderName: name,
       avatarIdx: avatarIdx,
       pcm: pcm,
       endOfTransmission: (flags & _PktFlags.endOfTransmission) != 0,
-      isPresence: (flags & _PktFlags.presence) != 0,
-    ));
+      isPresence: isPresence,
+      seq: seq,
+    );
+
+    // Presence wagt-bagly däl, tertipe goýmaýarys.
+    if (isPresence) {
+      _incoming.add(pkt);
+      return;
+    }
+
+    // Ses paketleri ugradyjy boýunça jitter bufere salynýar.
+    final buf = _buffers.putIfAbsent(
+      senderId,
+      () => _SenderBuffer(_incoming.add),
+    );
+    buf.add(pkt);
   }
 
   /// PCM böleginiň iberilmegi. Uly PCM bolsa birnäçe UDP paketine bölünýär.

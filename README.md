@@ -4,22 +4,22 @@
 Telefonlar şol bir ýerli ulgamda şifrelenen kanal arkaly bas-konuş ses iberýär.
 
 > iOS & Android · Flutter · AES-256-GCM · UDP broadcast
-> **Häzirki wersiýa: [v0.1.2](https://github.com/jumabayev/BBTalk/releases/tag/v0.1.2)**
+> **Häzirki wersiýa: [v0.1.3](https://github.com/jumabayev/BBTalk/releases/tag/v0.1.3)**
 
 ## Android APK-ny ýüklemek
 
 <table>
   <tr>
     <td align="center" width="220">
-      <a href="https://github.com/jumabayev/BBTalk/releases/download/v0.1.2/bbtalk-v0.1.2.apk">
-        <img src="qr-v0.1.2.png" width="200" alt="QR: BBTalk v0.1.2 APK-ny ýükle">
+      <a href="https://github.com/jumabayev/BBTalk/releases/download/v0.1.3/bbtalk-v0.1.3.apk">
+        <img src="qr-v0.1.3.png" width="200" alt="QR: BBTalk v0.1.3 APK-ny ýükle">
       </a>
       <br>
       <sub>Telefon kamerasy bilen okadyň</sub>
     </td>
     <td>
       <p><b>📥 Göni ýükleme salgysy:</b></p>
-      <p><a href="https://github.com/jumabayev/BBTalk/releases/download/v0.1.2/bbtalk-v0.1.2.apk">bbtalk-v0.1.2.apk</a> (46 MB)</p>
+      <p><a href="https://github.com/jumabayev/BBTalk/releases/download/v0.1.3/bbtalk-v0.1.3.apk">bbtalk-v0.1.3.apk</a> (46 MB)</p>
       <p><b>🗂 Ähli wersiýalar:</b></p>
       <p><a href="https://github.com/jumabayev/BBTalk/releases">github.com/jumabayev/BBTalk/releases</a></p>
       <ol>
@@ -121,13 +121,30 @@ başga kanaldakylar (meselem parolyny bilmeýänler) eşidip bilmeýär.
 - **Paket ululygy:** iň köp 1024 B PCM + 36 B başlyk+nonce+tag (IP fragment ýok)
 - **Codec:** MVP üçin PCM göni göýberilýär. Gerek bolsa Opus goşup bolar (`flutter_opus`, `opus_flutter`).
 
+## Edilenler (v0.1.3-e çenli)
+
+- ✅ LAN discovery — presence heartbeat (2 s aralyk, 12 s timeout) + täze
+  peer-a bada-bat jogap
+- ✅ Per-ugradyjy jitter buferi — paketler `seq` boýunça tertipläp berilýär,
+  60 ms-e çenli ýitik pakede garaşyp soň seksen geçilýär
+- ✅ Seq-esasly duplikat/gijik filtri — gaýtalanan ýa eýýäm geçilen paket
+  buferiň girişinde ret edilýär
+- ✅ Half-duplex gulp — başgasy gepläňde düwme sessiz ret edilýär
+- ✅ Subnet broadcast (x.x.x.255) — bir ugradyjy-ähli-eşidýän mehanizm
+- ✅ Šifrelenen umumy kanal (AES-256-GCM, açar = SHA-256(channel))
+
 ## Mümkin ösüşler
 
-- LAN discovery (UDP broadcast `HELLO` + enjam sanawy)
-- Opus codec bilen ses göwrümini ~10× kiçeltmek
-- Ýazgyny wagtlaýyn jitter-buffere salmak
-- Ses gaýtalanyşynyň öňüni almak üçin seq-esasly duplikat filtri
-- Kanal paroly aýrylyk "işleýiş koduny" goşmak
+- **Opus codec** — `flutter_opus`/`opus_flutter` bilen ses göwrümini
+  ~10× kiçeltmek we ýitik pakete garşy içerki concealment gazanmak.
+  Native baglylyk getirer, diňe gowy synalandan soň goşulsa bolar.
+- **Dinamik ugur** — iOS-da `playAndRecord` awtomatiki earpiece-e geçýär;
+  ses güýçli dynamige awdirmek üçin AVAudioSession seta goşmaça patch
+  gerek.
+- **Kanal paroly aýrylyk "işleýiş kody"** — häzir kanal ady = parol.
+  Iki aýratyn meýdan (kanal + parol) bölünmek bilen UX hasam gowy bolar.
+- **PTT kilit toggle** — bir gezek basyp elini goýberip ýene basýança
+  gepleýän rejim (awariýa ýa uzyn ulanyşda amatly).
 
 ## Litsenziýa
 
