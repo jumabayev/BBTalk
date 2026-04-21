@@ -215,6 +215,11 @@ class _PttScreenState extends State<PttScreen> with WidgetsBindingObserver {
 
   Future<void> _startTx() async {
     if (_status == _Status.transmitting || _starting) return;
+    if (_status == _Status.receiving) {
+      // Başga birisi gepleýär — garaşmaly.
+      if (widget.settings.vibrate) HapticFeedback.heavyImpact();
+      return;
+    }
     if (widget.settings.vibrate) HapticFeedback.mediumImpact();
     setState(() => _status = _Status.transmitting);
     try {
@@ -413,9 +418,32 @@ class _PttScreenState extends State<PttScreen> with WidgetsBindingObserver {
                         child: Center(
                           child: _status == _Status.receiving &&
                                   _currentSpeaker != null
-                              ? Text(
-                                  Avatars.get(_currentSpeaker!.avatarIdx).emoji,
-                                  style: TextStyle(fontSize: btnSize * 0.5),
+                              ? Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Text(
+                                      Avatars.get(_currentSpeaker!.avatarIdx).emoji,
+                                      style: TextStyle(fontSize: btnSize * 0.5),
+                                    ),
+                                    Positioned(
+                                      right: btnSize * 0.14,
+                                      bottom: btnSize * 0.14,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black87,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                              color: Colors.white, width: 2),
+                                        ),
+                                        child: Icon(
+                                          Icons.lock,
+                                          color: Colors.white,
+                                          size: btnSize * 0.1,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 )
                               : Icon(
                                   _status == _Status.transmitting
@@ -428,19 +456,34 @@ class _PttScreenState extends State<PttScreen> with WidgetsBindingObserver {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    Text(
-                      _status == _Status.transmitting
-                          ? 'GEPLEÝÄR — goýber → dine'
-                          : 'Basyp sakla → gürle',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: _status == _Status.transmitting
-                            ? const Color(0xFFE53935)
-                            : Colors.black54,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    Builder(builder: (_) {
+                      String txt;
+                      Color col;
+                      switch (_status) {
+                        case _Status.transmitting:
+                          txt = 'GEPLEÝÄR — goýber → gutar';
+                          col = const Color(0xFFE53935);
+                          break;
+                        case _Status.receiving:
+                          txt = 'GARAŞ — ${_currentSpeaker?.name ?? 'birisi'} '
+                              'gepleýär';
+                          col = Colors.black54;
+                          break;
+                        case _Status.idle:
+                          txt = 'Basyp sakla → gürle';
+                          col = Colors.black54;
+                          break;
+                      }
+                      return Text(
+                        txt,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: col,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      );
+                    }),
                   ],
                 ),
               ),

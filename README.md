@@ -4,22 +4,22 @@
 Telefonlar şol bir ýerli ulgamda şifrelenen kanal arkaly bas-konuş ses iberýär.
 
 > iOS & Android · Flutter · AES-256-GCM · UDP broadcast
-> **Häzirki wersiýa: [v0.1.1](https://github.com/jumabayev/BBTalk/releases/tag/v0.1.1)**
+> **Häzirki wersiýa: [v0.1.2](https://github.com/jumabayev/BBTalk/releases/tag/v0.1.2)**
 
 ## Android APK-ny ýüklemek
 
 <table>
   <tr>
     <td align="center" width="220">
-      <a href="https://github.com/jumabayev/BBTalk/releases/download/v0.1.1/bbtalk-v0.1.1.apk">
-        <img src="qr-v0.1.1.png" width="200" alt="QR: BBTalk v0.1.1 APK-ny ýükle">
+      <a href="https://github.com/jumabayev/BBTalk/releases/download/v0.1.2/bbtalk-v0.1.2.apk">
+        <img src="qr-v0.1.2.png" width="200" alt="QR: BBTalk v0.1.2 APK-ny ýükle">
       </a>
       <br>
       <sub>Telefon kamerasy bilen okadyň</sub>
     </td>
     <td>
       <p><b>📥 Göni ýükleme salgysy:</b></p>
-      <p><a href="https://github.com/jumabayev/BBTalk/releases/download/v0.1.1/bbtalk-v0.1.1.apk">bbtalk-v0.1.1.apk</a> (46 MB)</p>
+      <p><a href="https://github.com/jumabayev/BBTalk/releases/download/v0.1.2/bbtalk-v0.1.2.apk">bbtalk-v0.1.2.apk</a> (46 MB)</p>
       <p><b>🗂 Ähli wersiýalar:</b></p>
       <p><a href="https://github.com/jumabayev/BBTalk/releases">github.com/jumabayev/BBTalk/releases</a></p>
       <ol>

@@ -151,7 +151,8 @@ class UdpVoice {
     final name = utf8.decode(pt.sublist(17, 17 + nameLen),
         allowMalformed: true);
     final avatarIdx = pt[17 + nameLen];
-    final pcm = Uint8List.fromList(pt.sublist(18 + nameLen));
+    // .sublist çärýek Uint8List-i owrdip berýär — ikinji copy gerek däl.
+    final pcm = pt.sublist(18 + nameLen);
 
     _incoming.add(IncomingVoice(
       senderId: senderId,
