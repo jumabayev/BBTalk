@@ -10,9 +10,14 @@ import '../audio_constants.dart';
 /// Mikrofony PCM16 akym görnüşinde berýän iň pes derejedäki abstraksiýa.
 ///
 /// Goşmaça:
-/// • Her paketde RMS dereje hasaplanýar we [onLevel] bilen UI-a ugradylýar
-///   (0..1 aralykda — düwmäniň töwereginde galyşyk animasiýa üçin).
+/// • Her paketde RMS dereje hasaplanýar we [onLevel] bilen UI-a ugradylýar.
 /// • Islege görä [VoiceEffectProcessor] bilen göni akymda ses üýtgedilýär.
+///
+/// Zero-copy in-place effekt ulanylanda `asInt16List` view göni PCM baýtlary
+/// bilen işleýär. Öz birnäçe Android enjamda `record` paketi Uint8List-i başga
+/// buferiň içinde jora däl offset-de goýup bilýär — şol ýagdaý üçin copy+
+/// writeback ýoly we doly try/catch bar: her näme bolsa-da asyl PCM sende
+/// edilýär, sessiz iýilmäýär.
 class AudioCapture {
   final AudioRecorder _recorder = AudioRecorder();
   StreamSubscription<Uint8List>? _sub;
@@ -46,18 +51,18 @@ class AudioCapture {
           onFrame(pcm);
           return;
         }
-        // int16 göz arkaly PCM-iň üstünden işleýäris (copy ýok).
-        final samples = pcm.buffer.asInt16List(
-          pcm.offsetInBytes,
-          pcm.lengthInBytes ~/ 2,
-        );
 
         final eff = _effect;
         if (eff != null) {
-          eff.process(samples, AudioConstants.sampleRate);
+          try {
+            _applyEffect(pcm, eff);
+          } catch (_) {
+            // Effekt näsaz bolsa-da asyl PCM gidýär, sesiň sessiz kesilmeginiň
+            // öňi alynýar.
+          }
         }
 
-        onLevel(_rms(samples));
+        onLevel(_rms(pcm));
         onFrame(pcm);
       },
       onError: (_) {},
@@ -79,16 +84,37 @@ class AudioCapture {
     await _recorder.dispose();
   }
 
-  static double _rms(Int16List s) {
-    if (s.isEmpty) return 0;
+  /// Align barlag + fallback bilen effekti goýulýar.
+  static void _applyEffect(Uint8List pcm, VoiceEffectProcessor eff) {
+    if (pcm.length < 2) return;
+    final evenLen = pcm.length & ~1;
+    final offset = pcm.offsetInBytes;
+    if ((offset & 1) == 0 && (evenLen & 1) == 0) {
+      // Zero-copy view — köp ýagdaýda gidýär.
+      final view = pcm.buffer.asInt16List(offset, evenLen ~/ 2);
+      eff.process(view, AudioConstants.sampleRate);
+      return;
+    }
+    // Align däl: copy → process → writeback.
+    final aligned = Uint8List(evenLen);
+    aligned.setRange(0, evenLen, pcm);
+    final view = aligned.buffer.asInt16List(0, evenLen ~/ 2);
+    eff.process(view, AudioConstants.sampleRate);
+    pcm.setRange(0, evenLen, aligned);
+  }
+
+  /// Alignment-agnostic, aç-açan little-endian RMS.
+  static double _rms(Uint8List pcm) {
+    if (pcm.length < 2) return 0;
+    final count = pcm.length ~/ 2;
+    final bd = ByteData.sublistView(pcm);
     double sum = 0;
-    for (int i = 0; i < s.length; i++) {
-      final v = s[i].toDouble();
+    for (int i = 0; i < count; i++) {
+      final v = bd.getInt16(i * 2, Endian.little).toDouble();
       sum += v * v;
     }
-    final rms = math.sqrt(sum / s.length) / 32768;
-    // Ses RMS-i adatça logarifmik — pes ýerde has diri görkezmek üçin
-    // ýumşak kubine galdyrýarys.
+    final rms = math.sqrt(sum / count) / 32768;
+    // Pes seslerde hem dýwişli görünsin diýip logarifmik-meňzeş egrilik.
     return math.pow(rms.clamp(0, 1), 0.55).toDouble();
   }
 }

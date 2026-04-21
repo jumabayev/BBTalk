@@ -11,14 +11,6 @@ abstract class VoiceEffectProcessor {
   void reset();
 }
 
-/// Effekt ýok — dodaklanman geçip gidýär.
-class _PassThrough extends VoiceEffectProcessor {
-  @override
-  void process(Int16List samples, int sampleRate) {}
-  @override
-  void reset() {}
-}
-
 /// Ring modulator: sinus bilen göni köpelt → klassiki robot sesi.
 class RingModProcessor extends VoiceEffectProcessor {
   final double freq;
@@ -224,10 +216,10 @@ enum VoiceEffect {
   final String emoji;
   const VoiceEffect(this.label, this.emoji);
 
-  VoiceEffectProcessor createProcessor() {
+  VoiceEffectProcessor? createProcessor() {
     switch (this) {
       case VoiceEffect.none:
-        return _PassThrough();
+        return null;
       case VoiceEffect.robot:
         return RingModProcessor(freq: 100);
       case VoiceEffect.alien:
