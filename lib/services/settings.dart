@@ -14,6 +14,7 @@ class AppSettings {
   static const _kAvatar = 'avatarIdx';
   static const _kUserId = 'userId';
   static const _kVibrate = 'vibrate';
+  static const _kEffect = 'effectIdx';
 
   String channel;
   int port;
@@ -21,6 +22,7 @@ class AppSettings {
   int avatarIdx;
   final String userId;
   bool vibrate;
+  int effectIdx; // 0 = effekt ýok
 
   AppSettings({
     required this.channel,
@@ -29,6 +31,7 @@ class AppSettings {
     required this.avatarIdx,
     required this.userId,
     required this.vibrate,
+    required this.effectIdx,
   });
 
   static Future<AppSettings> load() async {
@@ -63,6 +66,7 @@ class AppSettings {
       avatarIdx: avatarIdx,
       userId: userId,
       vibrate: p.getBool(_kVibrate) ?? true,
+      effectIdx: p.getInt(_kEffect) ?? 0,
     );
   }
 
@@ -74,5 +78,6 @@ class AppSettings {
     await p.setInt(_kAvatar, avatarIdx);
     await p.setString(_kUserId, userId);
     await p.setBool(_kVibrate, vibrate);
+    await p.setInt(_kEffect, effectIdx);
   }
 }

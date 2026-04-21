@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../audio/voice_effects.dart';
 import '../models/avatars.dart';
 import '../services/settings.dart';
 
@@ -16,6 +17,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _port;
   late TextEditingController _name;
   late int _avatarIdx;
+  late int _effectIdx;
   late bool _vibrate;
 
   @override
@@ -25,6 +27,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _port = TextEditingController(text: widget.settings.port.toString());
     _name = TextEditingController(text: widget.settings.name);
     _avatarIdx = widget.settings.avatarIdx;
+    _effectIdx = widget.settings.effectIdx;
     _vibrate = widget.settings.vibrate;
   }
 
@@ -44,6 +47,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ..port = port
       ..name = _name.text.trim().isEmpty ? 'User' : _name.text.trim()
       ..avatarIdx = _avatarIdx
+      ..effectIdx = _effectIdx
       ..vibrate = _vibrate;
     await widget.settings.save();
     if (mounted) Navigator.of(context).pop(true);
@@ -85,6 +89,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.lock),
             ),
+          ),
+          const SizedBox(height: 20),
+          const _SectionLabel('SES EFFEKTI'),
+          const SizedBox(height: 8),
+          _EffectPicker(
+            selected: _effectIdx,
+            onSelect: (i) => setState(() => _effectIdx = i),
           ),
           const SizedBox(height: 20),
           ExpansionTile(
@@ -135,6 +146,61 @@ class _SectionLabel extends StatelessWidget {
         fontWeight: FontWeight.w700,
         color: Colors.black54,
         letterSpacing: 1.1,
+      ),
+    );
+  }
+}
+
+class _EffectPicker extends StatelessWidget {
+  final int selected;
+  final ValueChanged<int> onSelect;
+  const _EffectPicker({required this.selected, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (int i = 0; i < VoiceEffect.values.length; i++) _chip(context, i),
+      ],
+    );
+  }
+
+  Widget _chip(BuildContext context, int i) {
+    final e = VoiceEffect.values[i];
+    final isSel = i == selected;
+    return GestureDetector(
+      onTap: () => onSelect(i),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSel
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
+              : Colors.black.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSel
+                ? Theme.of(context).colorScheme.primary
+                : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(e.emoji, style: const TextStyle(fontSize: 18)),
+            const SizedBox(width: 6),
+            Text(
+              e.label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

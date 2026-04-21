@@ -7,6 +7,7 @@ import 'package:network_info_plus/network_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../audio/voice_effects.dart';
 import '../models/avatars.dart';
 import '../services/audio_capture.dart';
 import '../services/audio_player.dart';
@@ -57,6 +58,7 @@ class _PttScreenState extends State<PttScreen> with WidgetsBindingObserver {
   final _udp = UdpVoice();
   final _capture = AudioCapture();
   final _player = AudioPlayer();
+  final ValueNotifier<double> _micLevel = ValueNotifier(0);
 
   StreamSubscription<IncomingVoice>? _inSub;
   Timer? _rxTimer;
@@ -89,6 +91,7 @@ class _PttScreenState extends State<PttScreen> with WidgetsBindingObserver {
     _udp.dispose();
     _capture.dispose();
     _player.dispose();
+    _micLevel.dispose();
     super.dispose();
   }
 
@@ -223,15 +226,23 @@ class _PttScreenState extends State<PttScreen> with WidgetsBindingObserver {
     if (widget.settings.vibrate) HapticFeedback.mediumImpact();
     setState(() => _status = _Status.transmitting);
     try {
-      await _capture.start(onFrame: (pcm) {
-        _udp.sendVoice(
-          port: widget.settings.port,
-          pcm: pcm,
-          userId: widget.settings.userId,
-          name: widget.settings.name,
-          avatarIdx: widget.settings.avatarIdx,
-        );
-      });
+      final effect =
+          VoiceEffect.fromIndex(widget.settings.effectIdx).createProcessor();
+      await _capture.start(
+        effect: effect,
+        onLevel: (lvl) {
+          _micLevel.value = lvl;
+        },
+        onFrame: (pcm) {
+          _udp.sendVoice(
+            port: widget.settings.port,
+            pcm: pcm,
+            userId: widget.settings.userId,
+            name: widget.settings.name,
+            avatarIdx: widget.settings.avatarIdx,
+          );
+        },
+      );
     } catch (e) {
       setState(() {
         _status = _Status.idle;
@@ -242,6 +253,7 @@ class _PttScreenState extends State<PttScreen> with WidgetsBindingObserver {
 
   Future<void> _stopTx() async {
     if (_status != _Status.transmitting) return;
+    _micLevel.value = 0;
     await _capture.stop();
     await _udp.sendVoice(
       port: widget.settings.port,
@@ -395,7 +407,22 @@ class _PttScreenState extends State<PttScreen> with WidgetsBindingObserver {
                       onlineCount: _online.length + 1,
                     ),
                     const SizedBox(height: 20),
-                    Listener(
+                    SizedBox(
+                      width: btnSize + 120,
+                      height: btnSize + 120,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          if (_status == _Status.transmitting)
+                            ValueListenableBuilder<double>(
+                              valueListenable: _micLevel,
+                              builder: (_, lvl, _) => _MicLevelRing(
+                                base: btnSize,
+                                level: lvl,
+                                color: _statusColor,
+                              ),
+                            ),
+                          Listener(
                       behavior: HitTestBehavior.opaque,
                       onPointerDown: (_) => _startTx(),
                       onPointerUp: (_) => _stopTx(),
@@ -453,6 +480,9 @@ class _PttScreenState extends State<PttScreen> with WidgetsBindingObserver {
                                   size: btnSize * 0.45,
                                 ),
                         ),
+                      ),
+                    ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -588,6 +618,40 @@ class _SpeakerBanner extends StatelessWidget {
         fontSize: 15,
         color: Colors.black.withValues(alpha: 0.6),
         fontWeight: FontWeight.w500,
+      ),
+    );
+  }
+}
+
+/// TX wagtynda mikrofon derejesine görä ululygy üýtgeýän dym-arsyz halka.
+class _MicLevelRing extends StatelessWidget {
+  final double base;
+  final double level; // 0..1
+  final Color color;
+  const _MicLevelRing({
+    required this.base,
+    required this.level,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final extra = (level * 110).clamp(0.0, 110.0);
+    final size = base + extra;
+    return IgnorePointer(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 70),
+        curve: Curves.easeOut,
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color.withValues(alpha: 0.12 + 0.18 * level),
+          border: Border.all(
+            color: color.withValues(alpha: 0.25 + 0.5 * level),
+            width: 2 + 2 * level,
+          ),
+        ),
       ),
     );
   }
