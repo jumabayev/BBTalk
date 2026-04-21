@@ -23,6 +23,11 @@ class AudioCapture {
   StreamSubscription<Uint8List>? _sub;
   VoiceEffectProcessor? _effect;
 
+  /// UI rebuild-lerini 10 Hz bilen çäklendirýäris — 25+ fps rebuild UI
+  /// isolate-de jank döredip ses pleýerini gürleýärdi.
+  static const _levelMinInterval = Duration(milliseconds: 100);
+  DateTime _lastLevelAt = DateTime.fromMillisecondsSinceEpoch(0);
+
   bool get isRecording => _sub != null;
 
   Future<bool> hasPermission() => _recorder.hasPermission();
@@ -35,6 +40,7 @@ class AudioCapture {
     await stop();
     _effect = effect;
     _effect?.reset();
+    _lastLevelAt = DateTime.fromMillisecondsSinceEpoch(0);
 
     final stream = await _recorder.startStream(const RecordConfig(
       encoder: AudioEncoder.pcm16bits,
@@ -62,7 +68,11 @@ class AudioCapture {
           }
         }
 
-        onLevel(_rms(pcm));
+        final now = DateTime.now();
+        if (now.difference(_lastLevelAt) >= _levelMinInterval) {
+          _lastLevelAt = now;
+          onLevel(_rms(pcm));
+        }
         onFrame(pcm);
       },
       onError: (_) {},

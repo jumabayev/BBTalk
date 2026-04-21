@@ -4,22 +4,22 @@
 Telefonlar şol bir ýerli ulgamda şifrelenen kanal arkaly bas-konuş ses iberýär.
 
 > iOS & Android · Flutter · AES-256-GCM · UDP broadcast
-> **Häzirki wersiýa: [v0.1.5](https://github.com/jumabayev/BBTalk/releases/tag/v0.1.5)**
+> **Häzirki wersiýa: [v0.1.6](https://github.com/jumabayev/BBTalk/releases/tag/v0.1.6)**
 
 ## Android APK-ny ýüklemek
 
 <table>
   <tr>
     <td align="center" width="220">
-      <a href="https://github.com/jumabayev/BBTalk/releases/download/v0.1.5/bbtalk-v0.1.5.apk">
-        <img src="qr-v0.1.5.png" width="200" alt="QR: BBTalk v0.1.5 APK-ny ýükle">
+      <a href="https://github.com/jumabayev/BBTalk/releases/download/v0.1.6/bbtalk-v0.1.6.apk">
+        <img src="qr-v0.1.6.png" width="200" alt="QR: BBTalk v0.1.6 APK-ny ýükle">
       </a>
       <br>
       <sub>Telefon kamerasy bilen okadyň</sub>
     </td>
     <td>
       <p><b>📥 Göni ýükleme salgysy:</b></p>
-      <p><a href="https://github.com/jumabayev/BBTalk/releases/download/v0.1.5/bbtalk-v0.1.5.apk">bbtalk-v0.1.5.apk</a> (46 MB)</p>
+      <p><a href="https://github.com/jumabayev/BBTalk/releases/download/v0.1.6/bbtalk-v0.1.6.apk">bbtalk-v0.1.6.apk</a> (46 MB)</p>
       <p><b>🗂 Ähli wersiýalar:</b></p>
       <p><a href="https://github.com/jumabayev/BBTalk/releases">github.com/jumabayev/BBTalk/releases</a></p>
       <ol>
@@ -121,7 +121,7 @@ başga kanaldakylar (meselem parolyny bilmeýänler) eşidip bilmeýär.
 - **Paket ululygy:** iň köp 1024 B PCM + 36 B başlyk+nonce+tag (IP fragment ýok)
 - **Codec:** MVP üçin PCM göni göýberilýär. Gerek bolsa Opus goşup bolar (`flutter_opus`, `opus_flutter`).
 
-## Ses effektleri (v0.1.5)
+## Ses effektleri (v0.1.6)
 
 Kanal boýunça ugradyjy tarapda hakyky-wagtly DSP bilen sesi üýtgedip bolýar:
 
@@ -139,7 +139,7 @@ Saýlaw: Sazlamalar → Ses effekti. Effekt mikrofon bilen paket iberiläninden 
 ulanylýar — beýleki taraplar eýýäm üýtgedilen sesi eşidýär. Şifrelemesi, seq
 tertibi, jitter buferi — barysy öňki ýaly işleýär.
 
-## Edilenler (v0.1.5-e çenli)
+## Edilenler (v0.1.6-e çenli)
 
 - ✅ LAN discovery — presence heartbeat (2 s aralyk, 12 s timeout) + täze
   peer-a bada-bat jogap
